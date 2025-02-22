@@ -7,10 +7,11 @@ const port = process.env.PORT || 7000;
 const app = express();
 
 app.use(cors({
-    origin: 'http://localhost:5173', // Allow the frontend domain
-    methods: ['GET', 'POST', 'PUT'],
+    origin: ['http://localhost:5173', 'https://to-do-list-220c9.web.app'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type'],
 }));
+
 app.use(express.json());
 
 const server = app.listen(port, () => {
@@ -19,14 +20,15 @@ const server = app.listen(port, () => {
 
 const io = socketIo(server, {
     cors: {
-        origin: 'http://localhost:5173', // Allow frontend domain
+        origin: ['http://localhost:5173', 'https://to-do-list-220c9.web.app'],
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type'],
     }
 });
 
 
-const uri =`mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.kriop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
+
+const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.kriop.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -74,12 +76,38 @@ async function run() {
             res.send(result);
         });
 
-        app.delete('/tasks/:id', async(req, res)=>{
+        app.delete('/tasks/:id', async (req, res) => {
             const id = req.params.id;
-            const query = {_id: new ObjectId(id)};
+            const query = { _id: new ObjectId(id) };
             const result = await taskCollection.deleteOne(query);
             res.send(result)
+            console.log(result)
         })
+        app.put("/task/:id", async (req, res) => {
+            const { id } = req.params;
+            const { name, description } = req.body;
+
+            // Check if the task exists in the database
+            const task = await taskCollection.findOne({ _id: new ObjectId(id) });
+            if (!task) {
+                return res.status(404).json({ message: "Task not found" });
+            }
+
+            // Prepare the updated task object
+            const updatedTask = {};
+            if (name) updatedTask.name = name;   // Update name only if it's provided
+            if (description) updatedTask.description = description;   // Update description only if it's provided
+
+            // Update the task in the database
+            const result = await taskCollection.updateOne(
+                { _id: new ObjectId(id) },  // Find the task by its ID
+                { $set: updatedTask }       // Update the fields that are provided
+            );
+
+            // Send the response back
+            res.send(result);
+        });
+
 
         app.put('/tasks/:id', async (req, res) => {
             const id = req.params.id;
