@@ -20,7 +20,7 @@ const server = app.listen(port, () => {
 const io = socketIo(server, {
     cors: {
         origin: 'http://localhost:5173', // Allow frontend domain
-        methods: ['GET', 'POST', 'PUT'],
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type'],
     }
 });
@@ -73,6 +73,13 @@ async function run() {
             const result = await taskCollection.find(query).toArray();
             res.send(result);
         });
+
+        app.delete('/tasks/:id', async(req, res)=>{
+            const id = req.params.id;
+            const query = {_id: new ObjectId(id)};
+            const result = await taskCollection.deleteOne(query);
+            res.send(result)
+        })
 
         app.put('/tasks/:id', async (req, res) => {
             const id = req.params.id;
